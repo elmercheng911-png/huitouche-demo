@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f766e" />
+  <meta name="description" content="回頭車示範：內部運費與回程媒合工具原型。懂化工、食品、藥用原料的車。本站為功能示範，資料皆為虛構，非正式營運平台。" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="回頭車" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>回頭車｜懂化工、食品、藥用原料的車（示範）</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icons/icon-192.png" type="image/png" />
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+  <link rel="stylesheet" href="./css/app.css" />
+</head>
+<body>
+  <a class="skip" href="#main">跳到主要內容</a>
+
+  <div id="loginScreen" class="login">
+    <div class="login-card">
+      <div class="login-brand">
+        <div class="mark" aria-hidden="true">回</div>
+        <div>
+          <p class="eyebrow">示範版 PWA</p>
+          <h1>回頭車</h1>
+          <p>懂化工、食品、藥用原料的車</p>
+        </div>
+      </div>
+      <h2>先把空車回程變成可計算的節省</h2>
+      <p class="lede">這是內部運費與回程媒合工具的第一版示範，用來登記貨物、回程車、比對條件，並記錄每一趟的原運費、回頭車價和節省金額。</p>
+      <div class="demo-banner">本站為功能示範，不是正式對外媒合平台。所有貨主、車行、路線與金額皆為虛構示例，沒有真實客戶或推薦語。</div>
+      <p class="meta" style="margin-bottom:8px">請選一個示範身分進入，密碼皆為 <strong>demo</strong>。</p>
+      <div class="accounts" id="accountButtons"></div>
+      <form id="loginForm" class="login-form">
+        <div class="field"><label for="loginEmail">帳號</label><input id="loginEmail" type="email" autocomplete="username" value="ops@demo.huitouche.tw" required /></div>
+        <div class="field"><label for="loginPassword">密碼</label><input id="loginPassword" type="password" autocomplete="current-password" value="demo" required /></div>
+        <label class="check"><input type="checkbox" id="rememberMe" checked /> 在這台裝置記住示範登入</label>
+        <button class="btn full" type="submit">進入示範</button>
+      </form>
+      <p class="legal-note">第一版不處理金流，也不承接超過危品數量門檻的貨物。實際運送應委託合法營業貨車（黃牌）。公路法修正後第 77 條，未經核准經營貨運可能面臨高額罰鍰。</p>
+    </div>
+  </div>
+
+  <div id="app" class="app" hidden>
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="mark">回</div>
+        <div><strong>回頭車</strong><span>示範・內部工具</span></div>
+      </div>
+      <nav class="nav" id="sideNav"></nav>
+      <div class="sidebar-foot">資料存在這台瀏覽器，可匯出備份。之後可改接 Firebase 或 Supabase。</div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div class="page-title">
+          <h1 id="pageTitle">營運總覽</h1>
+          <p id="pageSub">掌握貨源、回程車與每趟節省</p>
+        </div>
+        <button class="btn small outline" id="installBtn" hidden>安裝到手機</button>
+        <button class="icon-btn" id="notifyBtn" title="通知" aria-label="通知">🔔<span class="dot" id="notifyDot" hidden></span></button>
+        <div class="user-chip" id="userChip"></div>
+      </header>
+
+      <div class="install-bar" id="installBar">
+        <span>可把這個示範安裝成手機 App（加入主畫面）。</span>
+        <span><button class="btn small" id="installBarBtn">安裝</button> <button class="btn small ghost" id="dismissInstall">稍後</button></span>
+      </div>
+
+      <main id="main" class="content">
+        <section class="view active" id="view-dashboard">
+          <div class="hero">
+            <p class="eyebrow">懂化工、食品、藥用原料的車</p>
+            <h2>讓回程空車變成看得到的運費節省</h2>
+            <p>先當內部工具用：登記貨物與回程車、檢查合規條件、留下原運費與回頭車價。本頁數字來自分離的虛構示範資料。</p>
+            <div class="hero-actions">
+              <button class="btn white" data-go="cargos" style="background:#fff;color:#0b4f4a">刊登貨物</button>
+              <button class="btn ghost-white" data-go="trucks" style="background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.3);box-shadow:none">登記回程車</button>
+              <button class="btn ghost-white" data-go="matching" style="background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.3);box-shadow:none">開始媒合</button>
+            </div>
+          </div>
+          <div class="stats" id="dashStats"></div>
+          <div class="grid-2">
+            <div class="panel">
+              <div class="panel-head"><div><h3>近期媒合路線</h3><p>依趟次建立時間排序</p></div><button class="btn small outline" data-go="trips">查看全部</button></div>
+              <div class="panel-body" id="dashRoutes"></div>
+            </div>
+            <div class="panel">
+              <div class="panel-head"><div><h3>動態紀錄</h3><p>系統與訂單事件</p></div></div>
+              <div class="panel-body" id="dashActivity"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="view-cargos">
+          <div class="section-intro">
+            <div><h2>貨運需求</h2><p>刊登待運貨物：起訖、日期、貨類（化工／食品添加物／藥用原料）、重量、包裝與特殊需求。</p></div>
+            <button class="btn" id="newCargoBtn">新增貨物</button>
+          </div>
+          <div class="toolbar">
+            <div class="search"><span class="ico">⌕</span><input id="cargoSearch" placeholder="搜尋品名、貨主或路線" /></div>
+            <select class="field" id="cargoFilter" style="width:auto;min-width:140px;padding:10px 11px;border:1px solid var(--line);border-radius:11px">
+              <option value="">全部狀態</option>
+              <option>待配對</option>
+              <option>詢價中</option>
+              <option>已成交</option>
+            </select>
+          </div>
+          <div class="cards" id="cargoList"></div>
+        </section>
+
+        <section class="view" id="view-trucks">
+          <div class="section-intro">
+            <div><h2>回程車源</h2><p>登記空車回程：路線、日期、車型、載重與證照。第一版只媒合營業貨車（黃牌）。</p></div>
+            <button class="btn" id="newTruckBtn">新增回程車</button>
+          </div>
+          <div class="toolbar">
+            <div class="search"><span class="ico">⌕</span><input id="truckSearch" placeholder="搜尋車行、路線或車牌" /></div>
+          </div>
+          <div class="cards" id="truckList"></div>
+        </section>
+
+        <section class="view" id="view-matching">
+          <div class="section-intro">
+            <div><h2>智慧配對</h2><p>依路線、日期、載重與貨類相容性計分，並擋下危品超量與白牌車。</p></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><div><h3>選擇待運貨物</h3><p>點選後即時計算可用車源</p></div></div>
+            <div class="panel-body">
+              <div class="field" style="margin-bottom:12px">
+                <label for="matchCargo">貨物</label>
+                <select id="matchCargo"></select>
+              </div>
+              <div id="matchDgBox"></div>
+              <div id="matchResults"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="view-trips">
+          <div class="section-intro">
+            <div><h2>趟次紀錄</h2><p>每一趟都留下原運費、回頭車價與節省金額。金流不會經過這個示範。</p></div>
+            <button class="btn outline small" data-action="exportTrips">匯出 CSV</button>
+          </div>
+          <div class="table-wrap" id="tripTable"></div>
+        </section>
+
+        <section class="view" id="view-savings">
+          <div class="section-intro">
+            <div><h2>節省儀表板</h2><p>彙總已記錄的原運費與回頭車價差。數字僅來自本機示範資料。</p></div>
+          </div>
+          <div class="stats" id="savingStats"></div>
+          <div class="grid-2">
+            <div class="panel">
+              <div class="panel-head"><div><h3>近 7 日節省</h3><p>依趟次建立日加總</p></div></div>
+              <div class="panel-body"><div class="chart" id="savingChart"></div></div>
+            </div>
+            <div class="panel">
+              <div class="panel-head"><div><h3>各路線節省</h3><p>原運費減回頭車價</p></div></div>
+              <div class="panel-body" id="savingRoutes"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="view-compliance">
+          <div class="section-intro">
+            <div><h2>合規與範圍</h2><p>第一版示範採納 2026/11/16 法規備忘錄的保守範圍，不是法律意見。</p></div>
+          </div>
+          <div class="panel"><div class="panel-body">
+            <h3>本示範會做的事</h3>
+            <ul>
+              <li>只把有「營業貨車（黃牌）」的車源納入媒合；沒有黃牌的示範車會被排除。</li>
+              <li>危險物品數量檢查：氣體 50 kg、液體 100 kg、固體 200 kg，超過就無法刊登或配對。</li>
+              <li>食品添加物／藥用原料與化工貨的混載不相容時，不會配對。</li>
+              <li>金流標示為交由持照第三方，本示範不收款、不代收代付。</li>
+            </ul>
+            <h3>本示範不做的事</h3>
+            <ul>
+              <li>不是正式對外媒合平台，也不對外招攬車行或抽成。</li>
+              <li>不處理真實公司出貨資料。</li>
+              <li>不申請或假裝已取得汽車貨運業執照。</li>
+            </ul>
+            <p>參考條文（全國法規資料庫）：<a href="https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=K0040001&amp;flno=77" target="_blank" rel="noopener">公路法第 77 條</a>、
+            <a href="https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=K0040013&amp;flno=84" target="_blank" rel="noopener">道路交通安全規則第 84 條</a>。</p>
+            <div class="legal-note">公路法 115 年 8 月 17 日修正公布後第 77 條，未經核准經營貨運，罰鍰區間為 10 萬至 2,500 萬元。平台若招募司機、以自己名義承運或收運費分潤，有被認定為經營貨運業的風險。第一階段因此先做內部工具示範。</div>
+          </div></div>
+        </section>
+
+        <section class="view" id="view-settings">
+          <div class="section-intro">
+            <div><h2>設定與資料</h2><p>管理本機示範資料、運價參數，並查看之後接後端的方式。</p></div>
+          </div>
+          <div class="settings-grid">
+            <div class="card">
+              <h3>資料備份</h3>
+              <p class="meta">資料存在這台裝置的瀏覽器（localStorage）。匯入會覆蓋目前資料。</p>
+              <div class="card-actions">
+                <button class="btn" data-action="exportJSON">匯出 JSON</button>
+                <button class="btn outline" id="importBtn">匯入 JSON</button>
+                <input type="file" id="importFile" accept="application/json" hidden />
+                <button class="btn danger" id="resetBtn">重設示範資料</button>
+              </div>
+            </div>
+            <div class="card">
+              <h3>運價參數</h3>
+              <p class="meta">建議價以預估公里、車型、載重與急件係數計算，再套用回程折扣。</p>
+              <div class="form-grid two" style="margin-top:10px">
+                <div class="field"><label>基礎每公里費率</label><input type="number" id="baseRateInput" min="10" step="1" /></div>
+                <div class="field"><label>回程折扣</label><input type="number" id="discountInput" min="0.5" max="1" step="0.01" /></div>
+              </div>
+              <div class="card-actions"><button class="btn small" id="savePricingBtn">儲存參數</button></div>
+            </div>
+            <div class="card">
+              <h3>系統設計（方便之後接雲端）</h3>
+              <div class="architecture">
+                <div class="architecture-row"><strong>前端</strong><span>可安裝的響應式 PWA，繁體中文，同一套畫面同時當網站與手機 App。</span></div>
+                <div class="architecture-row"><strong>資料層</strong><span>HTStore 介面（load / save / clear）。現在是 localStorage，可換成 Firebase 或 Supabase 適配器。</span></div>
+                <div class="architecture-row"><strong>媒合引擎</strong><span>沿用 11/14 MVP 權重：起點 24%、迄點 24%、日期 16%、車型 14%、載重 10%、價格 6%、評價 6%，並加上危品、混載與黃牌硬條件。</span></div>
+                <div class="architecture-row"><strong>登入</strong><span>目前是示範帳號 stub。正式版需改為真實身分驗證與權限。</span></div>
+                <div class="architecture-row"><strong>金流</strong><span>正式營運時交給持照第三方支付；平台初期不代收運費。</span></div>
+              </div>
+              <div class="card-actions"><button class="btn outline small" id="logoutBtn">登出示範帳號</button></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="view-more">
+          <div class="section-intro"><div><h2>更多</h2><p>車源、節省、合規與設定。</p></div></div>
+          <div class="more-list">
+            <button data-go="trucks"><span><strong>回程車源</strong><br /><span class="meta">登記空車與證照</span></span><span>›</span></button>
+            <button data-go="savings"><span><strong>節省儀表板</strong><br /><span class="meta">原運費與回頭車價差</span></span><span>›</span></button>
+            <button data-go="compliance"><span><strong>合規與範圍</strong><br /><span class="meta">危品門檻與公路法說明</span></span><span>›</span></button>
+            <button data-go="settings"><span><strong>設定與資料</strong><br /><span class="meta">備份、參數與登出</span></span><span>›</span></button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <nav class="tabbar" id="tabbar"></nav>
+  </div>
+
+  <div class="backdrop" id="cargoModal">
+    <div class="modal">
+      <div class="modal-head"><h3 id="cargoModalTitle">新增貨運需求</h3><button class="close-x" data-close="cargoModal" type="button">×</button></div>
+      <form id="cargoForm">
+        <div class="modal-body">
+          <input type="hidden" id="cargoId" />
+          <div id="cargoDgBox"></div>
+          <div class="form-grid two">
+            <div class="field full"><label class="required" for="cargoTitle">貨物名稱</label><input id="cargoTitle" required placeholder="例：食品級檸檬酸（袋裝）" /></div>
+            <div class="field"><label class="required" for="cargoOwner">貨主</label><input id="cargoOwner" required /></div>
+            <div class="field"><label class="required" for="cargoGoodsType">貨類</label><select id="cargoGoodsType" required></select></div>
+            <div class="field"><label for="cargoPackaging">包裝</label><select id="cargoPackaging"></select></div>
+            <div class="field"><label class="required" for="cargoOrigin">起運地</label><select id="cargoOrigin" required></select></div>
+            <div class="field"><label class="required" for="cargoDestination">目的地</label><select id="cargoDestination" required></select></div>
+            <div class="field"><label class="required" for="cargoPickup">裝貨日起</label><input id="cargoPickup" type="date" required /></div>
+            <div class="field"><label for="cargoDelivery">希望送達</label><input id="cargoDelivery" type="date" /></div>
+            <div class="field"><label for="cargoVehicle">指定車型</label><select id="cargoVehicle"></select></div>
+            <div class="field"><label for="cargoTemp">溫度條件</label><select id="cargoTemp"></select></div>
+            <div class="field"><label class="required" for="cargoWeight">重量（kg）</label><input id="cargoWeight" type="number" min="1" step="1" required /></div>
+            <div class="field"><label for="cargoVolume">材積（m³）</label><input id="cargoVolume" type="number" min="0" step="0.1" /></div>
+            <div class="field"><label class="required" for="cargoOriginal">原運費（NT$）</label><input id="cargoOriginal" type="number" min="0" step="100" required placeholder="一般專車或既有報價" /></div>
+            <div class="field"><label for="cargoBudget">可接受回頭車價</label><input id="cargoBudget" type="number" min="0" step="100" /></div>
+            <div class="field"><label for="cargoUrgency">時效</label><select id="cargoUrgency"></select></div>
+            <div class="field">
+              <label class="check" style="margin-top:22px"><input type="checkbox" id="cargoIsDangerous" /> 屬危險物品</label>
+            </div>
+            <div class="field" id="cargoStateField" hidden>
+              <label class="required" for="cargoState">危品型態</label>
+              <select id="cargoState"></select>
+            </div>
+            <div class="field full"><label>特殊需求</label><div class="checks" id="cargoReqs"></div></div>
+            <div class="field full"><label for="cargoDocs">需檢附文件</label><input id="cargoDocs" placeholder="例：SDS、COA（以頓號分隔）" /></div>
+            <div class="field full"><label for="cargoNote">補充說明</label><textarea id="cargoNote" placeholder="裝卸條件、防潮或其他注意事項"></textarea></div>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn outline" data-close="cargoModal">取消</button>
+          <button type="submit" class="btn">儲存貨物</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="backdrop" id="truckModal">
+    <div class="modal">
+      <div class="modal-head"><h3 id="truckModalTitle">新增回程車源</h3><button class="close-x" data-close="truckModal" type="button">×</button></div>
+      <form id="truckForm">
+        <div class="modal-body">
+          <input type="hidden" id="truckId" />
+          <div class="form-grid two">
+            <div class="field"><label class="required" for="truckCompany">車行</label><input id="truckCompany" required /></div>
+            <div class="field"><label for="truckDriver">司機</label><input id="truckDriver" /></div>
+            <div class="field"><label for="truckPlate">車牌</label><input id="truckPlate" placeholder="營業貨車車牌" /></div>
+            <div class="field"><label class="required" for="truckVehicle">車型</label><select id="truckVehicle" required></select></div>
+            <div class="field"><label class="required" for="truckOrigin">目前／空車起點</label><select id="truckOrigin" required></select></div>
+            <div class="field"><label class="required" for="truckDestination">回程目的地</label><select id="truckDestination" required></select></div>
+            <div class="field"><label class="required" for="truckAvailable">可裝貨日起</label><input id="truckAvailable" type="date" required /></div>
+            <div class="field"><label for="truckEnd">可裝貨日迄</label><input id="truckEnd" type="date" /></div>
+            <div class="field"><label class="required" for="truckMaxWeight">最大載重（kg）</label><input id="truckMaxWeight" type="number" min="1" required /></div>
+            <div class="field"><label for="truckMaxVolume">最大材積（m³）</label><input id="truckMaxVolume" type="number" min="0" step="0.1" /></div>
+            <div class="field"><label for="truckPrice">期望運價</label><input id="truckPrice" type="number" min="0" step="100" /></div>
+            <div class="field"><label for="truckEquipment">設備</label><select id="truckEquipment"></select></div>
+            <div class="field"><label for="truckPhone">聯絡電話</label><input id="truckPhone" placeholder="示範請用虛構號碼" /></div>
+            <div class="field"><label for="truckLastGoods">前一趟貨類</label><select id="truckLastGoods"><option value="">（無／未知）</option></select></div>
+            <div class="field full"><label>證照</label><div class="checks" id="truckLicences"></div></div>
+            <div class="field full"><label>可承接貨類</label><div class="checks" id="truckAccepted"></div></div>
+            <div class="field full"><label class="check"><input type="checkbox" id="truckCleaned" checked /> 車廂已清潔，可轉換貨類</label></div>
+            <div class="field full"><label for="truckNote">補充說明</label><textarea id="truckNote"></textarea></div>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn outline" data-close="truckModal">取消</button>
+          <button type="submit" class="btn">儲存回程車</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="backdrop" id="quoteModal">
+    <div class="modal small">
+      <div class="modal-head"><h3>建立趟次紀錄</h3><button class="close-x" data-close="quoteModal" type="button">×</button></div>
+      <form id="quoteForm">
+        <div class="modal-body">
+          <input type="hidden" id="quoteCargoId" />
+          <input type="hidden" id="quoteTruckId" />
+          <div class="quote-summary" id="quoteSummary"></div>
+          <div class="field"><label class="required" for="quoteOriginal">原運費（NT$）</label><input type="number" id="quoteOriginal" min="0" step="100" required /></div>
+          <div class="field" style="margin-top:12px"><label class="required" for="quotePrice">回頭車價（NT$）</label><input type="number" id="quotePrice" min="100" step="100" required /></div>
+          <p class="meta" id="quoteSavingPreview" style="margin:8px 0 0"></p>
+          <div class="field" style="margin-top:12px"><label for="quoteNote">備註</label><textarea id="quoteNote" placeholder="裝卸約定等。本示範不處理金流。"></textarea></div>
+          <p class="legal-note">本示範不收款。正式營運時，運費應由貨主與車行透過持照第三方支付處理，平台不代收代付。</p>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn outline" data-close="quoteModal">取消</button>
+          <button type="submit" class="btn">確認建立</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="backdrop" id="confirmModal">
+    <div class="modal small">
+      <div class="modal-head"><h3 id="confirmTitle">請確認</h3><button class="close-x" data-close="confirmModal" type="button">×</button></div>
+      <div class="modal-body" id="confirmBody"></div>
+      <div class="modal-foot">
+        <button type="button" class="btn outline" data-close="confirmModal">取消</button>
+        <button type="button" class="btn" id="confirmActionBtn">確定</button>
+      </div>
+    </div>
+  </div>
+
+  <aside class="drawer" id="notifyDrawer" aria-label="通知">
+    <div class="drawer-head"><h3>通知</h3><button class="close-x" id="closeDrawer" type="button">×</button></div>
+    <div class="drawer-body" id="notifyList"></div>
+  </aside>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="./js/data.js"></script>
+  <script src="./js/store.js"></script>
+  <script src="./js/match.js"></script>
+  <script src="./js/app.js"></script>
+</body>
+</html>

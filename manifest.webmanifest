@@ -1,0 +1,18 @@
+{
+  "name": "回頭車（示範）",
+  "short_name": "回頭車",
+  "description": "內部運費與回程媒合工具示範。懂化工、食品、藥用原料的車。資料皆為虛構，非正式營運平台。",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0b4f4a",
+  "theme_color": "#0f766e",
+  "lang": "zh-Hant-TW",
+  "icons": [
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "./icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
